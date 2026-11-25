@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Courses Famille</title>
+    <!-- Configuration PWA iOS pour installation sur l'écran d'accueil Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Courses">
+    <meta name="theme-color" content="#F2F2F7">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./icon.svg">
+    <!-- Chargement de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chargement de Lucide Icons pour des icônes épurées style iOS -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Police Inter & Configuration Apple SF Pro -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        ios: {
+                            bg: '#F2F2F7',
+                            card: '#FFFFFF',
+                            separator: '#E5E5EA',
+                            grayText: '#8E8E93',
+                        },
+                        olivier: '#FF9500',
+                        ermine: '#FF2D55',
+                        mathieu: '#007AFF',
+                        gautier: '#34C759',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Styles spécifiques mobile & animations fluides iOS */
+        body {
+            background-color: #1C1C1E;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        input, textarea, select {
+            user-select: auto;
+        }
+        /* Masquer la barre de défilement tout en gardant le scroll */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Effet Liquid Glass Apple */
+        .glass-header {
+            background: rgba(242, 242, 247, 0.82);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        /* Animations d'apparition */
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-up {
+            animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+        /* Bulles SMS style iMessage */
+        .sms-bubble {
+            position: relative;
+            border-radius: 18px;
+            padding: 8px 13px;
+            max-width: 85%;
+            word-wrap: break-word;
+            line-height: 1.35;
+        }
+        .sms-bubble-other {
+            border-bottom-left-radius: 5px;
+        }
+        .sms-bubble-mine {
+            border-bottom-right-radius: 5px;
+        }
+    </style>
+</head>
+<body class="flex justify-center items-center min-h-screen p-0 sm:p-4 font-sans text-slate-900">
+
+    <!-- Conteneur format iPhone strictement centré -->
+    <div id="phone-frame" class="relative w-full max-w-[430px] h-[100dvh] sm:h-[860px] sm:max-h-[92vh] bg-[#F2F2F7] sm:rounded-[46px] sm:shadow-[0_25px_70px_-15px_rgba(0,0,0,0.55)] sm:border-[8px] sm:border-slate-900 overflow-hidden flex flex-col">
+        
+        <!-- Encoche décorative sur vue ordinateur uniquement -->
+        <div class="hidden sm:flex justify-center pt-2 pb-1 bg-[#F2F2F7] z-50 shrink-0">
+            <div class="w-28 h-6 bg-slate-900 rounded-full flex items-center justify-end px-3">
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-800 border border-slate-700"></div>
+            </div>
+        </div>
+
+        <!-- Contenu dynamique injecté par JS -->
+        <div id="app-root" class="flex-1 flex flex-col overflow-hidden relative"></div>
+
+        <!-- Modale de confirmation personnalisée (remplace confirm/alert) -->
+        <div id="custom-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
+            <div class="bg-white/95 backdrop-blur-xl w-full max-w-[310px] rounded-[24px] shadow-2xl overflow-hidden text-center">
+                <div class="p-5">
+                    <h3 id="modal-title" class="text-[17px] font-bold text-slate-900 mb-1.5">Confirmation</h3>
+                    <p id="modal-message" class="text-[13.5px] text-slate-600 leading-relaxed">Êtes-vous sûr ?</p>
+                </div>
+                <div class="flex border-t border-slate-200/80">
+                    <button id="modal-cancel" class="flex-1 py-3.5 text-[16px] font-medium text-blue-600 active:bg-slate-100 transition border-r border-slate-200/80">
+                        Annuler
+                    </button>
+                    <button id="modal-confirm" class="flex-1 py-3.5 text-[16px] font-bold text-red-600 active:bg-slate-100 transition">
+                        Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Toast discrète -->
+        <div id="toast" class="hidden absolute bottom-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg backdrop-blur-md whitespace-nowrap">
+            Action effectuée
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURATION FIREBASE (À REMPLACER PAR TES CLÉS)
+        // ==========================================
+        const FIREBASE_USER_CONFIG = {
+            apiKey: "AIzaSyAdPOiJnStr9zlxNeUnJjQuEM-C7MGiP8M",
+            authDomain: "courses-famille-45c40.firebaseapp.com",
+            projectId: "courses-famille-45c40",
+            storageBucket: "courses-famille-45c40.firebasestorage.app",
+            messagingSenderId: "99865419445",
+            appId: "1:99865419445:web:47d0e0de82208f9d6c68fc"
+        };
+        const VAPID_PUBLIC_KEY = "REMPLACE_PAR_TA_CLE_VAPID_WEB_PUSH";
+
+        // ==========================================
+        // CONFIGURATION DES UTILISATEURS & MAGASINS
+        // ==========================================
+        const USERS = {
+            olivier: {
+                id: 'olivier',
+                name: 'Olivier',
+                role: 'admin',
+                roleLabel: 'Parent • Admin',
+                color: '#FF9500',
+                bgLight: '#FFF7ED',
+                textDark: '#C2410C',
+                initial: 'O'
+            },
+            ermine: {
+                id: 'ermine',
+                name: 'Ermine',
+                role: 'admin',
+                roleLabel: 'Parent • Admin',
+                color: '#FF2D55',
+                bgLight: '#FFF1F4',
+                textDark: '#BE123C',
+                initial: 'E'
+            },
+            mathieu: {
+                id: 'mathieu',
+                name: 'Mathieu',
+                role: 'member',
+                roleLabel: 'Famille',
+                color: '#007AFF',
+                bgLight: '#EFF6FF',
+                textDark: '#1D4ED8',
+                initial: 'M'
+            },
+            gautier: {
+                id: 'gautier',
+                name: 'Gautier',
+                role: 'member',
+                roleLabel: 'Famille',
+                color: '#34C759',
+                bgLight: '#ECFDF5',
+                textDark: '#047857',
+                initial: 'G'
+            }
+        };
+
+        const STORES = [
+            { name: 'Auchan Drive', icon: '🚗', badgeColor: 'bg-red-100 text-red-700' },
+            { name: 'Grand Frais', icon: '🥬', badgeColor: 'bg-emerald-100 text-emerald-700' },
+            { name: 'Carrefour', icon: '🛒', badgeColor: 'bg-blue-100 text-blue-700' },
+            { name: 'Super U', icon: '🏪', badgeColor: 'bg-cyan-100 text-cyan-700' },
+            { name: 'Intermarché', icon: '🛍️', badgeColor: 'bg-rose-100 text-rose-700' },
+            { name: 'Tati', icon: '🏷️', badgeColor: 'bg-pink-100 text-pink-700' },
+            { name: 'Autre', icon: '📍', badgeColor: 'bg-slate-200 text-slate-700' }
+        ];
+
+        const USER_STORAGE_KEY = 'courses_famille_active_user_v3';
+
+        // Données de démonstration réalistes au premier lancement (Listes actives + Archives)
+        const DEFAULT_DATA = {
+            lists: [
+                {
+                    id: 'list-demo-1',
+                    store: 'Auchan Drive',
+                    note: 'Commande prévue pour vendredi 17h30',
+                    createdBy: 'olivier',
+                    createdAt: 'Aujourd’hui, 10:15',
+                    items: [
+                        {
+                            id: 'item-1',
+                            name: 'Granola',
+                            description: '2 paquets chocolat au lait (format familial)',
+                            addedBy: 'mathieu',
+                            checked: false,
+                            comments: [
+                                {
+                                    id: 'c-1',
+                                    author: 'mathieu',
+                                    text: "Finalement j'ai plus trop envie de ces gâteaux-là, prends plutôt des Prince !",
+                                    time: '11:04'
+                                },
+                                {
+                                    id: 'c-2',
+                                    author: 'ermine',
+                                    text: "Noté ! Je change ça au moment de valider le panier Drive 👍",
+                                    time: '11:12'
+                                }
+                            ]
+                        },
+                        {
+                            id: 'item-2',
+                            name: 'Prince de Lu',
+                            description: 'Goût chocolat classique (lot de 3)',
+                            addedBy: 'gautier',
+                            checked: false,
+                            comments: []
+                        },
+                        {
+                            id: 'item-3',
+                            name: 'Papier toilette',
+                            description: 'Lotus confort 12 rouleaux minimum',
+                            addedBy: 'olivier',
+                            checked: true,
+                            comments: []
+                        },
+                        {
+                            id: 'item-4',
+                            name: 'Lait demi-écrémé',
+                            description: 'Pack de 6 bouteilles 1L',
+                            addedBy: 'ermine',
+                            checked: false,
+                            comments: [
+                                {
+                                    id: 'c-3',
+                                    author: 'gautier',
+                                    text: 'On peut aussi prendre du lait chocolaté ?',
+                                    time: '12:30'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            archivedLists: [
+                {
+                    id: 'arch-demo-1',
+                    store: 'Auchan Drive',
+                    note: 'Courses de la semaine dernière (tout le monde a validé)',
+                    createdBy: 'ermine',
+                    createdAt: '14 nov.',
+                    archivedAt: '16 nov. à 18:20',
+                    archivedBy: 'ermine',
+                    items: [
+                        {
+                            id: 'arch-i-1',
+                            name: 'Pâtes Barilla Spaghetti n°5',
+                            description: '2 paquets de 1kg',
+                            addedBy: 'olivier',
+                            checked: true,
+                            comments: []
+                        },
+                        {
+                            id: 'arch-i-2',
+                            name: 'Steaks hachés surgelés',
+                            description: 'Boîte de 10 pur bœuf',
+                            addedBy: 'ermine',
+                            checked: true,
+                            comments: []
+                        },
+                        {
+                            id: 'arch-i-3',
+                            name: 'Céréales Trésor',
+                            description: 'Chocolat noisettes',
+                            addedBy: 'mathieu',
+                            checked: true,
+                            comments: [
+                                {
+                                    id: 'arch-c-1',
+                                    author: 'gautier',
+                                    text: 'Top celles-ci, à reprendre la prochaine fois !',
+                                    time: '15:10'
+                                }
+                            ]
+                        },
+                        {
+                            id: 'arch-i-4',
+                            name: 'Jus d’orange pressé',
+                            description: '2 bouteilles sans pulpe au rayon frais',
+                            addedBy: 'gautier',
+                            checked: true,
+                            comments: []
+                        },
+                        {
+                            id: 'arch-i-5',
+                            name: 'Lessive liquide',
+                            description: 'Bidon familial',
+                            addedBy: 'ermine',
+                            checked: true,
+                            comments: []
+                        }
+                    ]
+                },
+                {
+                    id: 'arch-demo-2',
+                    store: 'Grand Frais',
+                    note: 'Fruits, légumes & fromages week-end',
+                    createdBy: 'olivier',
+                    createdAt: '08 nov.',
+                    archivedAt: '09 nov. à 11:45',
+                    archivedBy: 'olivier',
+                    items: [
+                        {
+                            id: 'arch-i-6',
+                            name: 'Clémentines',
+                            description: '1 filet de 2kg bien sucrées',
+                            addedBy: 'ermine',
+                            checked: true,
+                            comments: []
+                        },
+                        {
+                            id: 'arch-i-7',
+                            name: 'Comté affiné 18 mois',
+                            description: 'Environ 300g',
+                            addedBy: 'olivier',
+                            checked: true,
+                            comments: []
+                        },
+                        {
+                            id: 'arch-i-8',
+                            name: 'Avocats mûrs à point',
+                            description: '4 pièces',
+                            addedBy: 'mathieu',
+                            checked: true,
+                            comments: []
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // ==========================================
+        // ÉTAT GLOBAL DE L'APPLICATION
+        // ==========================================
+        let state = {
+            currentUser: null, // null = écran de sélection de profil
+            view: 'profiles', // 'profiles' | 'dashboard' | 'list-detail' | 'create-list' | 'archives' | 'archive-detail'
+            activeListId: null,
+            activeArchiveId: null,
+            reuseModalArchiveId: null, // ID de l'archive en cours de réutilisation
+            expandedItems: {}, // { itemId: true/false } pour afficher/masquer la zone commentaire
+            showAddItemForm: false,
+            showAddItemDetails: false,
+            showSettings: false,
+            cloudReady: false,
+            lists: [],
+            archivedLists: []
+        };
+
+        // Références Firebase en mémoire
+        let fb = {
+            db: null,
+            auth: null,
+            messaging: null,
+            user: null,
+            appId: 'courses-famille-app',
+            doc: null,
+            setDoc: null,
+            getToken: null
+        };
+
+        // ==========================================
+        // INITIALISATION & SYNCHRONISATION TEMPS RÉEL FIRESTORE
+        // ==========================================
+        async function initCloudSync() {
+            // Charger les données initiales en mémoire en attendant la réponse Cloud
+            state.lists = JSON.parse(JSON.stringify(DEFAULT_DATA.lists));
+            state.archivedLists = JSON.parse(JSON.stringify(DEFAULT_DATA.archivedLists));
+
+            try {
+                const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                const { getFirestore, doc, setDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+                const hasEnvConfig = typeof __firebase_config !== 'undefined';
+                const config = hasEnvConfig ? JSON.parse(__firebase_config) : FIREBASE_USER_CONFIG;
+                fb.appId = typeof __app_id !== 'undefined' ? __app_id : 'courses-famille-app';
+
+                // Vérifie si l'utilisateur a bien rempli sa configuration Firebase
+                if (!hasEnvConfig && config.apiKey === "REMPLACE_PAR_TON_API_KEY") {
+                    console.warn("Firebase non encore configuré : fonctionnement en mémoire locale.");
+                    render();
+                    return;
+                }
+
+                const app = initializeApp(config);
+                fb.auth = getAuth(app);
+                fb.db = getFirestore(app);
+                fb.doc = doc;
+                fb.setDoc = setDoc;
+
+                // RULE 3 : Authentification AVANT toute requête Firestore
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(fb.auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(fb.auth);
+                }
+                fb.user = fb.auth.currentUser;
+                if (!fb.user) return;
+
+                // RULE 1 : Chemin strict /artifacts/{appId}/public/data/{collectionName}/{docId}
+                const familyDocRef = doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'family_courses', 'main_state');
+
+                // Écoute en temps réel sur les 4 téléphones
+                onSnapshot(familyDocRef, (snapshot) => {
+                    state.cloudReady = true;
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        state.lists = Array.isArray(data.lists) ? data.lists : [];
+                        state.archivedLists = Array.isArray(data.archivedLists) ? data.archivedLists : [];
+                    } else {
+                        // Premier lancement sur Firebase : initialise la base avec l'exemple
+                        saveData();
+                    }
+                    render();
+                }, (error) => {
+                    console.error("Erreur écoute Firestore :", error);
+                    showToast("Erreur de synchronisation Cloud");
+                });
+
+                // Initialisation optionnelle de Firebase Cloud Messaging (Push iOS)
+                try {
+                    const { getMessaging, getToken, onMessage } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging.js");
+                    fb.messaging = getMessaging(app);
+                    fb.getToken = getToken;
+
+                    // Réception d'une notification quand l'application est ouverte au premier plan
+                    onMessage(fb.messaging, (payload) => {
+                        const title = payload.notification?.title || 'Courses Famille 🛒';
+                        const body = payload.notification?.body || 'La liste de courses a été mise à jour !';
+                        showToast(`${title} : ${body}`);
+                    });
+                } catch (msgErr) {
+                    console.info("Messaging non disponible sur ce navigateur :", msgErr);
+                }
+            } catch (e) {
+                console.error("Erreur initialisation Firebase :", e);
+            }
+        }
+
+        async function saveData() {
+            if (!fb.user || !fb.db || !fb.doc || !fb.setDoc) return;
+            try {
+                const familyDocRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'family_courses', 'main_state');
+                await fb.setDoc(familyDocRef, {
+                    lists: state.lists,
+                    archivedLists: state.archivedLists,
+                    updatedAt: Date.now(),
+                    updatedBy: state.currentUser || 'unknown'
+                });
+            } catch (e) {
+                console.error('Erreur sauvegarde Firestore:', e);
+                showToast('Erreur sauvegarde en ligne');
+            }
+        }
+
+        // ==========================================
+        // UTILITAIRES UI (MODALE, TOAST, HEURE)
+        // ==========================================
+        function showToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                el.classList.add('hidden');
+            }, 2400);
+        }
+
+        function openConfirmModal(title, message, confirmText, onConfirm, isPositive = false) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            const confirmBtn = document.getElementById('modal-confirm');
+            confirmBtn.textContent = confirmText || 'Confirmer';
+            confirmBtn.className = `flex-1 py-3.5 text-[16px] font-bold ${isPositive ? 'text-blue-600' : 'text-red-600'} active:bg-slate-100 transition`;
+
+            modal.classList.remove('hidden');
+
+            const close = () => {
+                modal.classList.add('hidden');
+            };
+
+            document.getElementById('modal-cancel').onclick = close;
+            confirmBtn.onclick = () => {
+                close();
+                onConfirm();
+            };
+        }
+
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function getFormattedDate() {
+            const now = new Date();
+            return now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' à ' + getCurrentTime();
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function isAdmin() {
+            return state.currentUser && USERS[state.currentUser]?.role === 'admin';
+        }
+
+        // ==========================================
+        // ACTIONS MÉTIER
+        // ==========================================
+        function selectProfile(userId) {
+            state.currentUser = userId;
+            state.view = 'dashboard';
+            state.showSettings = false;
+            render();
+        }
+
+        function switchProfile() {
+            state.currentUser = null;
+            state.view = 'profiles';
+            state.activeListId = null;
+            state.activeArchiveId = null;
+            state.reuseModalArchiveId = null;
+            state.showSettings = false;
+            render();
+        }
+
+        function openList(listId) {
+            state.activeListId = listId;
+            state.view = 'list-detail';
+            state.showAddItemForm = false;
+            state.showAddItemDetails = false;
+            render();
+        }
+
+        function openArchives() {
+            state.view = 'archives';
+            state.activeArchiveId = null;
+            state.reuseModalArchiveId = null;
+            render();
+        }
+
+        function openArchiveDetail(archiveId) {
+            state.activeArchiveId = archiveId;
+            state.view = 'archive-detail';
+            render();
+        }
+
+        function goBackToDashboard() {
+            state.view = 'dashboard';
+            state.activeListId = null;
+            state.activeArchiveId = null;
+            state.reuseModalArchiveId = null;
+            render();
+        }
+
+        function openCreateList() {
+            if (!isAdmin()) return;
+            state.view = 'create-list';
+            render();
+        }
+
+        function handleCreateListSubmit(e) {
+            e.preventDefault();
+            if (!isAdmin()) return;
+
+            const storeSelect = document.getElementById('store-select').value;
+            const customStoreInput = document.getElementById('custom-store-input')?.value.trim();
+            const noteInput = document.getElementById('list-note-input').value.trim();
+            const bulkItemsRaw = document.getElementById('bulk-items-input')?.value || '';
+
+            let finalStore = storeSelect;
+            if (storeSelect === 'Autre') {
+                if (!customStoreInput) {
+                    showToast('Précise le nom du magasin');
+                    return;
+                }
+                finalStore = customStoreInput;
+            }
+
+            // Découpage des articles rapides par virgules ou retours à la ligne
+            const initialItems = bulkItemsRaw
+                .split(/[\n,]+/)
+                .map(s => s.trim())
+                .filter(Boolean)
+                .map((itemName, index) => ({
+                    id: 'item-' + Date.now() + '-' + index,
+                    name: itemName.charAt(0).toUpperCase() + itemName.slice(1),
+                    description: '',
+                    addedBy: state.currentUser,
+                    checked: false,
+                    comments: []
+                }));
+
+            const newList = {
+                id: 'list-' + Date.now(),
+                store: finalStore,
+                note: noteInput,
+                createdBy: state.currentUser,
+                createdAt: 'Aujourd’hui, ' + getCurrentTime(),
+                items: initialItems
+            };
+
+            state.lists.unshift(newList);
+            saveData();
+            triggerLocalNotification('Nouvelle liste de courses 🛒', `${USERS[state.currentUser].name} a créé la liste ${finalStore}`);
+            showToast(`Liste "${finalStore}" créée !`);
+            openList(newList.id);
+        }
+
+        // Terminer et envoyer la liste aux ARCHIVES
+        function archiveList(listId, event) {
+            if (event) event.stopPropagation();
+            if (!isAdmin()) return;
+
+            const list = state.lists.find(l => l.id === listId);
+            if (!list) return;
+
+            openConfirmModal(
+                'Terminer & archiver ?',
+                `La liste "${list.store}" sera clôturée et sauvegardée dans les Archives pour pouvoir la réutiliser plus tard.`,
+                'Archiver',
+                () => {
+                    const archivedCopy = {
+                        ...JSON.parse(JSON.stringify(list)),
+                        archivedAt: getFormattedDate(),
+                        archivedBy: state.currentUser
+                    };
+
+                    state.archivedLists.unshift(archivedCopy);
+                    state.lists = state.lists.filter(l => l.id !== listId);
+                    saveData();
+                    showToast('Liste archivée avec succès !');
+                    if (state.view === 'list-detail') {
+                        goBackToDashboard();
+                    } else {
+                        render();
+                    }
+                },
+                true
+            );
+        }
+
+        // Ouvrir la fenêtre de configuration de réutilisation d'une archive
+        function openReuseArchiveModal(archiveId, event) {
+            if (event) event.stopPropagation();
+            if (!isAdmin()) return;
+            state.reuseModalArchiveId = archiveId;
+            render();
+        }
+
+        function closeReuseArchiveModal() {
+            state.reuseModalArchiveId = null;
+            render();
+        }
+
+        // Confirmer la recréation d'une liste active depuis une archive
+        function handleConfirmReuseArchive(e) {
+            e.preventDefault();
+            if (!isAdmin() || !state.reuseModalArchiveId) return;
+
+            const archive = state.archivedLists.find(a => a.id === state.reuseModalArchiveId);
+            if (!archive) return;
+
+            const storeSelect = document.getElementById('reuse-store-select').value;
+            const customStoreInput = document.getElementById('reuse-custom-store')?.value.trim();
+            const noteInput = document.getElementById('reuse-note-input').value.trim();
+            const keepComments = document.getElementById('reuse-keep-comments').checked;
+
+            let finalStore = storeSelect;
+            if (storeSelect === 'Autre') {
+                if (!customStoreInput) {
+                    showToast('Précise le nom du magasin');
+                    return;
+                }
+                finalStore = customStoreInput;
+            }
+
+            // Recopie propre de tous les articles (décochés par défaut)
+            const clonedItems = (archive.items || []).map((item, idx) => ({
+                id: 'item-' + Date.now() + '-' + idx,
+                name: item.name,
+                description: item.description || '',
+                addedBy: item.addedBy || state.currentUser,
+                checked: false,
+                comments: keepComments ? JSON.parse(JSON.stringify(item.comments || [])) : []
+            }));
+
+            const restoredList = {
+                id: 'list-' + Date.now(),
+                store: finalStore,
+                note: noteInput,
+                createdBy: state.currentUser,
+                createdAt: 'Aujourd’hui, ' + getCurrentTime(),
+                items: clonedItems
+            };
+
+            state.lists.unshift(restoredList);
+            state.reuseModalArchiveId = null;
+            saveData();
+            showToast(`Liste "${finalStore}" recréée (${clonedItems.length} articles) !`);
+            openList(restoredList.id);
+        }
+
+        // Supprimer définitivement une archive
+        function deleteArchivePermanently(archiveId, event) {
+            if (event) event.stopPropagation();
+            if (!isAdmin()) return;
+
+            const archive = state.archivedLists.find(a => a.id === archiveId);
+            if (!archive) return;
+
+            openConfirmModal(
+                'Supprimer définitivement ?',
+                `L’archive "${archive.store}" (${archive.archivedAt}) sera effacée pour toujours.`,
+                'Supprimer',
+                () => {
+                    state.archivedLists = state.archivedLists.filter(a => a.id !== archiveId);
+                    saveData();
+                    showToast('Archive supprimée');
+                    if (state.view === 'archive-detail') {
+                        openArchives();
+                    } else {
+                        render();
+                    }
+                }
+            );
+        }
+
+        function handleAddItem(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('new-item-name');
+            const descInput = document.getElementById('new-item-desc');
+
+            const rawNames = nameInput.value.trim();
+            const description = descInput ? descInput.value.trim() : '';
+
+            if (!rawNames) {
+                showToast('Indique le nom du produit');
+                return;
+            }
+
+            const list = state.lists.find(l => l.id === state.activeListId);
+            if (!list) return;
+
+            // Supporte aussi l'ajout multiple séparé par virgule ou saut de ligne
+            const entries = rawNames.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+            entries.forEach((entry, idx) => {
+                list.items.push({
+                    id: 'item-' + Date.now() + '-' + idx,
+                    name: entry.charAt(0).toUpperCase() + entry.slice(1),
+                    description: entries.length === 1 ? description : '',
+                    addedBy: state.currentUser,
+                    checked: false,
+                    comments: []
+                });
+            });
+
+            saveData();
+            state.showAddItemForm = false;
+            state.showAddItemDetails = false;
+            showToast(entries.length > 1 ? `${entries.length} produits ajoutés !` : 'Produit ajouté !');
+            render();
+        }
+
+        function toggleItemCheck(itemId, event) {
+            if (event) event.stopPropagation();
+            const list = state.lists.find(l => l.id === state.activeListId);
+            if (!list) return;
+
+            const item = list.items.find(i => i.id === itemId);
+            if (item) {
+                item.checked = !item.checked;
+                saveData();
+                render();
+            }
+        }
+
+        function deleteItem(itemId, event) {
+            if (event) event.stopPropagation();
+            const list = state.lists.find(l => l.id === state.activeListId);
+            if (!list) return;
+
+            list.items = list.items.filter(i => i.id !== itemId);
+            saveData();
+            showToast('Article retiré');
+            render();
+        }
+
+        function toggleItemComments(itemId) {
+            state.expandedItems[itemId] = !state.expandedItems[itemId];
+            render();
+            if (state.expandedItems[itemId]) {
+                setTimeout(() => {
+                    const input = document.getElementById(`comment-input-${itemId}`);
+                    if (input) input.focus();
+                }, 60);
+            }
+        }
+
+        function handleAddComment(itemId, e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const input = document.getElementById(`comment-input-${itemId}`);
+            const text = input.value.trim();
+            if (!text) return;
+
+            const list = state.lists.find(l => l.id === state.activeListId);
+            if (!list) return;
+
+            const item = list.items.find(i => i.id === itemId);
+            if (!item) return;
+
+            item.comments.push({
+                id: 'c-' + Date.now(),
+                author: state.currentUser,
+                text: text,
+                time: getCurrentTime()
+            });
+
+            state.expandedItems[itemId] = true;
+            saveData();
+            render();
+        }
+
+        function resetDemoData() {
+            openConfirmModal(
+                'Réinitialiser la démo ?',
+                'Les listes en cours et les archives seront remplacées par les exemples initiaux.',
+                'Réinitialiser',
+                () => {
+                    state.lists = JSON.parse(JSON.stringify(DEFAULT_DATA.lists));
+                    state.archivedLists = JSON.parse(JSON.stringify(DEFAULT_DATA.archivedLists));
+                    state.showSettings = false;
+                    saveData();
+                    showToast('Données de démo restaurées');
+                    render();
+                }
+            );
+        }
+
+        // Demande d'autorisation de notifications Push iOS / Web + enregistrement du Token FCM
+        async function enableNotifications() {
+            if (!('Notification' in window)) {
+                showToast('Sur iPhone : ajoute d’abord l’appli à l’écran d’accueil Safari');
+                return;
+            }
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    showToast('Notifications activées sur ce téléphone !');
+
+                    // Enregistrement du Service Worker et récupération du jeton Push Firebase
+                    if ('serviceWorker' in navigator && fb.messaging && fb.getToken && VAPID_PUBLIC_KEY !== "REMPLACE_PAR_TA_CLE_VAPID_WEB_PUSH") {
+                        const registration = await navigator.serviceWorker.register('./service-worker.js');
+                        const fcmToken = await fb.getToken(fb.messaging, {
+                            vapidKey: VAPID_PUBLIC_KEY,
+                            serviceWorkerRegistration: registration
+                        });
+
+                        if (fcmToken && fb.user && fb.db && state.currentUser) {
+                            const tokenDocRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'push_tokens', state.currentUser);
+                            await fb.setDoc(tokenDocRef, {
+                                userId: state.currentUser,
+                                name: USERS[state.currentUser].name,
+                                token: fcmToken,
+                                updatedAt: Date.now()
+                            });
+                        }
+                    }
+
+                    new Notification('Courses Famille 🛒', {
+                        body: 'Tu seras prévenu dès qu’une nouvelle liste est créée !'
+                    });
+                } else {
+                    showToast('Autorisation refusée dans les réglages');
+                }
+                render();
+            } catch (err) {
+                console.error(err);
+                showToast('Ajoute d’abord la page à l’écran d’accueil iPhone');
+            }
+        }
+
+        // Déclenchement d'une notification locale quand une liste est créée
+        function triggerLocalNotification(title, body) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    new Notification(title, { body });
+                } catch (e) {}
+            }
+        }
+
+        // ==========================================
+        // COMPOSANTS DE RENDU
+        // ==========================================
+
+        // Badge profil actif en haut à droite (sur toutes les vues connectées)
+        function renderTopProfileBadge() {
+            const user = USERS[state.currentUser];
+            if (!user) return '';
+            return `
+                <button onclick="switchProfile()" title="Changer de profil"
+                    class="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-white shadow-xs border border-slate-200/80 active:scale-95 transition">
+                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xs"
+                          style="background-color: ${user.color}">
+                        ${user.initial}
+                    </span>
+                    <span class="text-[13px] font-semibold text-slate-800">${user.name}</span>
+                    <i data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-slate-400"></i>
+                </button>
+            `;
+        }
+
+        // 1. ÉCRAN DE SÉLECTION DE PROFIL
+        function renderProfileScreen() {
+            const userCards = Object.values(USERS).map(user => `
+                <button onclick="selectProfile('${user.id}')"
+                    class="group relative flex flex-col items-center justify-center p-5 rounded-[28px] bg-white shadow-xs border border-slate-200/60 active:scale-95 transition-all duration-150 hover:shadow-md">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3 shadow-md transition-transform group-hover:scale-105"
+                         style="background-color: ${user.color}; box-shadow: 0 8px 20px -4px ${user.color}66;">
+                        ${user.initial}
+                    </div>
+                    <span class="text-[17px] font-bold text-slate-900">${user.name}</span>
+                    <span class="mt-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+                          style="background-color: ${user.bgLight}; color: ${user.textDark};">
+                        ${user.role === 'admin' ? '★ Créateur de liste' : 'Participant'}
+                    </span>
+                </button>
+            `).join('');
+
+            return `
+                <div class="flex-1 flex flex-col justify-between p-6 overflow-y-auto no-scrollbar animate-fade-in">
+                    <div class="pt-6 text-center">
+                        <div class="w-16 h-16 mx-auto rounded-[22px] bg-slate-900 text-white flex items-center justify-center shadow-lg mb-4">
+                            <i data-lucide="shopping-bag" class="w-8 h-8"></i>
+                        </div>
+                        <h1 class="text-[28px] font-extrabold tracking-tight text-slate-900">Courses Famille</h1>
+                        <p class="text-[15px] text-slate-500 mt-1">Qui ouvre l’application ?</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3.5 my-6">
+                        ${userCards}
+                    </div>
+
+                    <div class="text-center pb-2">
+                        <p class="text-[12px] text-slate-400">
+                            Olivier & Ermine gèrent les listes • Tout le monde peut ajouter des articles et commenter
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 2. TABLEAU DE BORD (LISTES EN COURS + ACCÈS ARCHIVES)
+        function renderDashboard() {
+            const user = USERS[state.currentUser];
+            const admin = isAdmin();
+            const archiveCount = state.archivedLists.length;
+            const notifGranted = ('Notification' in window) && Notification.permission === 'granted';
+
+            const listsHTML = state.lists.length === 0 ? `
+                <div class="flex flex-col items-center justify-center text-center py-12 px-6 bg-white rounded-[28px] border border-slate-200/60 shadow-xs mt-2">
+                    <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-4">
+                        <i data-lucide="shopping-cart" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-[18px] font-bold text-slate-800">Aucune course prévue</h3>
+                    <p class="text-[14px] text-slate-500 mt-1.5 max-w-[260px]">
+                        ${admin 
+                            ? 'Crée une nouvelle liste de courses ou reprends une liste depuis les archives.' 
+                            : 'Olivier ou Ermine n’a pas encore lancé de liste de courses.'}
+                    </p>
+                </div>
+            ` : state.lists.map(list => {
+                const creator = USERS[list.createdBy] || USERS.olivier;
+                const storeMeta = STORES.find(s => s.name === list.store) || { icon: '🛍️', badgeColor: 'bg-slate-100 text-slate-700' };
+                const totalItems = list.items.length;
+                const checkedItems = list.items.filter(i => i.checked).length;
+                const totalComments = list.items.reduce((acc, i) => acc + (i.comments ? i.comments.length : 0), 0);
+
+                return `
+                    <div onclick="openList('${list.id}')"
+                        class="bg-white rounded-[26px] p-4 shadow-xs border border-slate-200/70 active:scale-[0.98] transition-all cursor-pointer relative overflow-hidden">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl shrink-0">
+                                    ${storeMeta.icon}
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-[18px] font-bold text-slate-900 leading-tight">${escapeHTML(list.store)}</h3>
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="En cours"></span>
+                                    </div>
+                                    <p class="text-[12.5px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+                                        <span>Par</span>
+                                        <span class="font-bold px-2 py-0.2 rounded-full text-[11px]"
+                                              style="background-color: ${creator.bgLight}; color: ${creator.textDark};">
+                                            ${creator.name}
+                                        </span>
+                                        <span>• ${list.createdAt}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            ${admin ? `
+                                <button onclick="archiveList('${list.id}', event)" title="Terminer & archiver la liste"
+                                    class="px-2.5 py-1.5 rounded-full bg-amber-50 text-amber-700 hover:bg-amber-100 active:scale-95 transition shrink-0 flex items-center gap-1 text-[11.5px] font-bold">
+                                    <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+                                    Archiver
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        ${list.note ? `
+                            <p class="mt-2.5 text-[13px] text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+                                📝 ${escapeHTML(list.note)}
+                            </p>
+                        ` : ''}
+
+                        <div class="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-[13px]">
+                            <div class="flex items-center gap-3 text-slate-600 font-medium">
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="list-checks" class="w-4 h-4 text-slate-400"></i>
+                                    ${checkedItems}/${totalItems} article${totalItems > 1 ? 's' : ''}
+                                </span>
+                                ${totalComments > 0 ? `
+                                    <span class="flex items-center gap-1 text-blue-600 font-semibold">
+                                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                                        ${totalComments}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <span class="text-blue-600 font-semibold flex items-center gap-0.5">
+                                Ouvrir <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <!-- En-tête fixe -->
+                <header class="glass-header sticky top-0 z-30 px-5 pt-3 pb-3.5 border-b border-slate-200/70 flex items-center justify-between shrink-0">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Famille</p>
+                        <h1 class="text-[24px] font-extrabold tracking-tight text-slate-900">Courses en cours</h1>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="state.showSettings = !state.showSettings; render();" title="Options & Notifications"
+                            class="w-8 h-8 rounded-full bg-white border border-slate-200/80 flex items-center justify-center text-slate-500 active:scale-90 transition">
+                            <i data-lucide="settings-2" class="w-4 h-4"></i>
+                        </button>
+                        ${renderTopProfileBadge()}
+                    </div>
+                </header>
+
+                <!-- Panneau discret paramètres / démo -->
+                ${state.showSettings ? `
+                    <div class="bg-white border-b border-slate-200 px-5 py-3 space-y-2.5 animate-fade-in">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[12.5px] font-medium text-slate-700">Notifications nouvelles listes</span>
+                            <button onclick="enableNotifications()" class="text-[12.5px] font-semibold ${notifGranted ? 'text-emerald-700 bg-emerald-50' : 'text-white bg-slate-900'} px-3 py-1.5 rounded-full">
+                                ${notifGranted ? '✓ Activées' : 'Activer les alertes'}
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                            <span class="text-[12.5px] text-slate-500">Options de démonstration</span>
+                            <button onclick="resetDemoData()" class="text-[12.5px] font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full active:bg-blue-100">
+                                Réinitialiser l'exemple
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Liste des courses + Carte Archives -->
+                <main class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3.5 pb-28">
+                    ${listsHTML}
+
+                    <!-- Bouton d'accès rapide aux Archives des courses terminées -->
+                    <div class="pt-2">
+                        <button onclick="openArchives()"
+                            class="w-full bg-white/90 hover:bg-white rounded-[22px] p-4 border border-slate-200/80 shadow-2xs flex items-center justify-between active:scale-[0.98] transition">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                                    <i data-lucide="archive" class="w-5 h-5"></i>
+                                </div>
+                                <div class="text-left">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[15px] font-bold text-slate-900">Archives des courses</span>
+                                        <span class="text-[11.5px] font-bold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700">
+                                            ${archiveCount}
+                                        </span>
+                                    </div>
+                                    <p class="text-[12px] text-slate-500 mt-0.5">
+                                        ${admin ? 'Consulter ou réutiliser une ancienne liste' : 'Voir l’historique des courses passées'}
+                                    </p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+                        </button>
+                    </div>
+                </main>
+
+                <!-- Bouton flottant Nouvelle Liste (UNIQUEMENT Olivier & Ermine) -->
+                ${admin ? `
+                    <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#F2F2F7] via-[#F2F2F7]/95 to-transparent pt-6">
+                        <button onclick="openCreateList()"
+                            class="w-full py-3.5 px-5 rounded-2xl text-white font-bold text-[16px] shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition"
+                            style="background-color: ${user.color}; box-shadow: 0 10px 25px -5px ${user.color}80;">
+                            <i data-lucide="plus" class="w-5 h-5 stroke-[2.5]"></i>
+                            ${state.lists.length === 0 ? 'Créer une nouvelle liste de courses' : 'Nouvelle liste'}
+                        </button>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        // 3. ÉCRAN CRÉATION DE LISTE (ADMIN UNIQUEMENT)
+        function renderCreateList() {
+            const user = USERS[state.currentUser];
+
+            const storeButtons = STORES.map((s, idx) => `
+                <label class="cursor-pointer">
+                    <input type="radio" name="store-radio" value="${s.name}" class="peer sr-only" ${idx === 0 ? 'checked' : ''}
+                        onchange="document.getElementById('store-select').value = this.value; document.getElementById('custom-store-wrapper').classList.toggle('hidden', this.value !== 'Autre');">
+                    <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-white border-2 border-transparent peer-checked:border-slate-900 peer-checked:bg-slate-50 shadow-2xs transition">
+                        <span class="text-xl">${s.icon}</span>
+                        <span class="text-[14px] font-semibold text-slate-800">${s.name}</span>
+                    </div>
+                </label>
+            `).join('');
+
+            return `
+                <header class="glass-header sticky top-0 z-30 px-4 py-3 border-b border-slate-200/70 flex items-center justify-between shrink-0">
+                    <button onclick="goBackToDashboard()" class="flex items-center gap-1 text-blue-600 font-semibold text-[16px] py-1 pr-2 active:opacity-60">
+                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        Retour
+                    </button>
+                    <h2 class="text-[17px] font-bold text-slate-900">Nouvelle liste</h2>
+                    ${renderTopProfileBadge()}
+                </header>
+
+                <form onsubmit="handleCreateListSubmit(event)" class="flex-1 overflow-y-auto no-scrollbar p-5 space-y-5 animate-slide-up pb-10">
+                    <div>
+                        <label class="block text-[13px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+                            Où vas-tu faire les courses ?
+                        </label>
+                        <input type="hidden" id="store-select" value="Auchan Drive">
+                        <div class="grid grid-cols-2 gap-2.5">
+                            ${storeButtons}
+                        </div>
+                    </div>
+
+                    <!-- Champ libre si "Autre" est sélectionné -->
+                    <div id="custom-store-wrapper" class="hidden animate-fade-in">
+                        <label class="block text-[13px] font-bold text-slate-700 mb-1.5">Nom du magasin</label>
+                        <input type="text" id="custom-store-input" placeholder="Ex: Picard, Boulangerie, Lidl..."
+                            class="w-full px-4 py-3.5 rounded-2xl bg-white border border-slate-200 text-[15px] focus:outline-none focus:border-slate-900">
+                    </div>
+
+                    <div>
+                        <label class="block text-[13px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                            Précision ou créneau (optionnel)
+                        </label>
+                        <input type="text" id="list-note-input" placeholder="Ex: Drive demain 18h, courses semaine..."
+                            class="w-full px-4 py-3.5 rounded-2xl bg-white border border-slate-200 text-[15px] focus:outline-none focus:border-slate-900">
+                    </div>
+
+                    <div>
+                        <label class="block text-[13px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                            Premiers articles rapides (optionnel)
+                        </label>
+                        <p class="text-[12px] text-slate-500 mb-2">Sépare les produits par une virgule ou va à la ligne :</p>
+                        <textarea id="bulk-items-input" rows="3" placeholder="Ex: Gâteau, Prince, Papier toilette, Lait..."
+                            class="w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-[15px] focus:outline-none focus:border-slate-900 resize-none"></textarea>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit"
+                            class="w-full py-4 rounded-2xl text-white font-bold text-[16px] shadow-lg active:scale-[0.98] transition"
+                            style="background-color: ${user.color};">
+                            Ouvrir la liste pour la famille
+                        </button>
+                    </div>
+                </form>
+            `;
+        }
+
+        // 4. VUE DÉTAILLÉE D'UNE LISTE DE COURSES + BULLE SMS
+        function renderListDetail() {
+            const list = state.lists.find(l => l.id === state.activeListId);
+            if (!list) {
+                goBackToDashboard();
+                return '';
+            }
+
+            const creator = USERS[list.createdBy] || USERS.olivier;
+            const currentUserObj = USERS[state.currentUser];
+            const admin = isAdmin();
+
+            // Trier : non cochés en haut, cochés en bas
+            const sortedItems = [...list.items].sort((a, b) => Number(a.checked) - Number(b.checked));
+
+            const itemsHTML = sortedItems.length === 0 ? `
+                <div class="text-center py-12 px-6 bg-white rounded-[26px] border border-slate-200/60">
+                    <p class="text-3xl mb-2">🧺</p>
+                    <h3 class="text-[16px] font-bold text-slate-800">La liste est encore vide</h3>
+                    <p class="text-[13px] text-slate-500 mt-1">Ajoute le premier produit ci-dessous !</p>
+                </div>
+            ` : sortedItems.map(item => {
+                const author = USERS[item.addedBy] || USERS.olivier;
+                const hasComments = item.comments && item.comments.length > 0;
+                // Ouvert si l'utilisateur a cliqué dessus OU s'il y a déjà des commentaires
+                const isCommentsOpen = Boolean(state.expandedItems[item.id]) || hasComments;
+
+                const bubblesHTML = (item.comments || []).map(c => {
+                    const cAuthor = USERS[c.author] || USERS.olivier;
+                    const isMine = c.author === state.currentUser;
+                    return `
+                        <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'} mb-2 last:mb-0">
+                            <span class="text-[10.5px] font-bold mb-0.5 px-1" style="color: ${cAuthor.color}">
+                                ${cAuthor.name} • ${c.time}
+                            </span>
+                            <div class="sms-bubble ${isMine ? 'sms-bubble-mine text-white' : 'sms-bubble-other text-white'} text-[13.5px] shadow-2xs"
+                                 style="background-color: ${cAuthor.color};">
+                                ${escapeHTML(c.text)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="bg-white rounded-[24px] shadow-2xs border border-slate-200/70 overflow-hidden transition-all ${item.checked ? 'opacity-65' : ''}"
+                         style="border-left: 5px solid ${author.color};">
+                        
+                        <!-- Ligne principale du produit (cliquable pour ouvrir les commentaires) -->
+                        <div onclick="toggleItemComments('${item.id}')" class="p-3.5 flex items-start gap-3 cursor-pointer active:bg-slate-50/80 transition">
+                            <!-- Case à cocher panier -->
+                            <button onclick="toggleItemCheck('${item.id}', event)"
+                                class="mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition"
+                                style="border-color: ${item.checked ? '#10B981' : '#CBD5E1'}; background-color: ${item.checked ? '#10B981' : 'transparent'};">
+                                ${item.checked ? '<i data-lucide="check" class="w-3.5 h-3.5 text-white stroke-[3]"></i>' : ''}
+                            </button>
+
+                            <!-- Nom + Description + Badge auteur -->
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-2">
+                                    <h4 class="text-[16px] font-bold text-slate-900 leading-snug ${item.checked ? 'line-through text-slate-400' : ''}">
+                                        ${escapeHTML(item.name)}
+                                    </h4>
+                                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                                          style="background-color: ${author.bgLight}; color: ${author.textDark};">
+                                        ${author.name}
+                                    </span>
+                                </div>
+
+                                ${item.description ? `
+                                    <p class="text-[13px] text-slate-500 mt-0.5 leading-snug">
+                                        ${escapeHTML(item.description)}
+                                    </p>
+                                ` : ''}
+                            </div>
+
+                            <!-- Bouton supprimer l'article (visible pour l'auteur ou les admins) -->
+                            ${(admin || item.addedBy === state.currentUser) ? `
+                                <button onclick="deleteItem('${item.id}', event)" title="Retirer l'article"
+                                    class="p-1.5 text-slate-300 hover:text-red-500 active:text-red-600 transition shrink-0">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        <!-- Zone de discussion SMS (visible uniquement si commentaires existants ou produit cliqué) -->
+                        ${isCommentsOpen ? `
+                            <div class="bg-[#F8F8FA] border-t border-slate-100 px-3.5 py-3 animate-fade-in">
+                                ${hasComments ? `
+                                    <div class="mb-2.5 max-h-48 overflow-y-auto no-scrollbar">
+                                        ${bubblesHTML}
+                                    </div>
+                                ` : `
+                                    <p class="text-[11.5px] text-slate-400 mb-2 text-center">
+                                        Une précision ou un changement d’avis sur ce produit ?
+                                    </p>
+                                `}
+
+                                <!-- Champ d'envoi rapide style SMS -->
+                                <form onsubmit="handleAddComment('${item.id}', event)" class="flex items-center gap-2">
+                                    <input type="text" id="comment-input-${item.id}"
+                                        placeholder="Écrire en tant que ${currentUserObj.name}..."
+                                        class="flex-1 bg-white border border-slate-200/90 rounded-full px-3.5 py-2 text-[13px] focus:outline-none focus:border-slate-400">
+                                    <button type="submit"
+                                        class="w-8 h-8 rounded-full text-white flex items-center justify-center shrink-0 active:scale-90 transition shadow-2xs"
+                                        style="background-color: ${currentUserObj.color};">
+                                        <i data-lucide="arrow-up" class="w-4 h-4 stroke-[2.5]"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <!-- En-tête de la liste -->
+                <header class="glass-header sticky top-0 z-30 px-4 py-3 border-b border-slate-200/70 shrink-0">
+                    <div class="flex items-center justify-between">
+                        <button onclick="goBackToDashboard()" class="flex items-center gap-1 text-blue-600 font-semibold text-[15px] py-1 pr-2 active:opacity-60">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            Listes
+                        </button>
+                        <div class="flex items-center gap-2">
+                            ${admin ? `
+                                <button onclick="archiveList('${list.id}', event)" title="Terminer & archiver la liste"
+                                    class="px-2.5 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1 text-[12px] font-bold active:bg-amber-100 transition">
+                                    <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+                                    Archiver
+                                </button>
+                            ` : ''}
+                            ${renderTopProfileBadge()}
+                        </div>
+                    </div>
+
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <div>
+                            <h1 class="text-[22px] font-extrabold text-slate-900 leading-tight">${escapeHTML(list.store)}</h1>
+                            <p class="text-[12px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                <span class="w-2 h-2 rounded-full" style="background-color: ${creator.color}"></span>
+                                Liste ouverte par <strong class="text-slate-700">${creator.name}</strong>
+                            </p>
+                        </div>
+                        <span class="text-[12px] font-bold text-slate-500 bg-slate-200/70 px-2.5 py-1 rounded-full">
+                            ${list.items.filter(i => i.checked).length}/${list.items.length} pris
+                        </span>
+                    </div>
+                </header>
+
+                <!-- Corps défilant des articles -->
+                <main class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-32">
+                    ${itemsHTML}
+                </main>
+
+                <!-- Tiroir ou Barre fixe d'ajout d'article (accessible à TOUS) -->
+                <div class="absolute bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-xl border-t border-slate-200/80 p-3.5 shadow-[0_-10px_30px_rgba(0,0,0,0.06)]">
+                    ${state.showAddItemForm ? `
+                        <form onsubmit="handleAddItem(event)" class="space-y-2.5 animate-slide-up">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[12px] font-bold uppercase tracking-wider" style="color: ${currentUserObj.color}">
+                                    Ajouter un produit (${currentUserObj.name})
+                                </span>
+                                <button type="button" onclick="state.showAddItemForm = false; state.showAddItemDetails = false; render();" class="text-xs font-semibold text-slate-400 px-2 py-1">
+                                    Fermer
+                                </button>
+                            </div>
+                            <input type="text" id="new-item-name" required placeholder="Nom du produit (ex: Granola, Prince, Lait...)"
+                                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 text-[15px] font-medium focus:outline-none focus:ring-2 focus:ring-slate-900">
+                            
+                            <!-- Accordéon dépliable pour les précisions -->
+                            <div>
+                                <button type="button" onclick="state.showAddItemDetails = !state.showAddItemDetails; render();"
+                                    class="flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-600 py-1">
+                                    <i data-lucide="${state.showAddItemDetails ? 'chevron-down' : 'chevron-right'}" class="w-4 h-4"></i>
+                                    Ajouter des précisions / infos
+                                </button>
+                                ${state.showAddItemDetails ? `
+                                    <input type="text" id="new-item-desc" placeholder="Marque, quantité, parfum, lien ou note spéciale..."
+                                        class="mt-1.5 w-full px-3.5 py-2.5 rounded-xl bg-slate-100 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-slate-900 animate-fade-in">
+                                ` : ''}
+                            </div>
+
+                            <button type="submit"
+                                class="w-full py-3 rounded-xl text-white font-bold text-[15px] shadow-md active:scale-[0.98] transition"
+                                style="background-color: ${currentUserObj.color};">
+                                Ajouter à la liste
+                            </button>
+                        </form>
+                    ` : `
+                        <button onclick="state.showAddItemForm = true; render(); setTimeout(() => document.getElementById('new-item-name')?.focus(), 50);"
+                            class="w-full py-3.5 px-4 rounded-2xl text-white font-bold text-[15px] flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition"
+                            style="background-color: ${currentUserObj.color};">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                            Ajouter un produit à la liste
+                        </button>
+                    `}
+                </div>
+            `;
+        }
+
+        // 5. ÉCRAN LISTE DES ARCHIVES
+        function renderArchives() {
+            const admin = isAdmin();
+
+            const archivesHTML = state.archivedLists.length === 0 ? `
+                <div class="flex flex-col items-center justify-center text-center py-14 px-6 bg-white rounded-[28px] border border-slate-200/60 shadow-xs mt-2">
+                    <div class="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                        <i data-lucide="archive" class="w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-[17px] font-bold text-slate-800">Aucune liste archivée</h3>
+                    <p class="text-[13.5px] text-slate-500 mt-1 max-w-[260px]">
+                        Quand Olivier ou Ermine terminera une liste de courses, elle apparaîtra ici pour pouvoir être réutilisée.
+                    </p>
+                </div>
+            ` : state.archivedLists.map(arch => {
+                const creator = USERS[arch.createdBy] || USERS.olivier;
+                const storeMeta = STORES.find(s => s.name === arch.store) || { icon: '🛍️', badgeColor: 'bg-slate-100 text-slate-700' };
+                const itemsPreview = (arch.items || []).slice(0, 4).map(i => i.name).join(', ');
+
+                return `
+                    <div onclick="openArchiveDetail('${arch.id}')"
+                        class="bg-white rounded-[24px] p-4 shadow-2xs border border-slate-200/80 active:scale-[0.98] transition cursor-pointer">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-2xl bg-slate-100 flex items-center justify-center text-xl shrink-0">
+                                    ${storeMeta.icon}
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h3 class="text-[17px] font-bold text-slate-900">${escapeHTML(arch.store)}</h3>
+                                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                            ${(arch.items || []).length} produit${(arch.items || []).length > 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+                                    <p class="text-[12px] text-slate-500 mt-0.5">
+                                        Archivée le <strong class="text-slate-700">${escapeHTML(arch.archivedAt || arch.createdAt)}</strong> • par ${creator.name}
+                                    </p>
+                                </div>
+                            </div>
+
+                            ${admin ? `
+                                <button onclick="deleteArchivePermanently('${arch.id}', event)" title="Supprimer définitivement"
+                                    class="p-2 rounded-full text-slate-300 hover:text-red-500 active:bg-red-50 active:text-red-600 transition shrink-0">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        ${itemsPreview ? `
+                            <p class="mt-2.5 text-[12.5px] text-slate-500 bg-slate-50 px-3 py-2 rounded-xl truncate">
+                                ${escapeHTML(itemsPreview)}${(arch.items || []).length > 4 ? '...' : ''}
+                            </p>
+                        ` : ''}
+
+                        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <span class="text-[12.5px] font-semibold text-slate-500 flex items-center gap-1">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                Voir le détail
+                            </span>
+
+                            ${admin ? `
+                                <button onclick="openReuseArchiveModal('${arch.id}', event)"
+                                    class="px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-[12.5px] font-bold flex items-center gap-1.5 shadow-xs active:scale-95 transition">
+                                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                                    Réutiliser cette liste
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <header class="glass-header sticky top-0 z-30 px-4 py-3 border-b border-slate-200/70 flex items-center justify-between shrink-0">
+                    <button onclick="goBackToDashboard()" class="flex items-center gap-1 text-blue-600 font-semibold text-[15px] py-1 pr-2 active:opacity-60">
+                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        Accueil
+                    </button>
+                    <h2 class="text-[17px] font-bold text-slate-900">Archives (${state.archivedLists.length})</h2>
+                    ${renderTopProfileBadge()}
+                </header>
+
+                <main class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-10 animate-fade-in">
+                    <div class="bg-blue-50/80 border border-blue-100 rounded-2xl p-3.5 flex items-start gap-2.5">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-blue-600 shrink-0 mt-0.5"></i>
+                        <p class="text-[12.5px] text-blue-900 leading-snug">
+                            ${admin 
+                                ? 'Reprends une ancienne liste en 1 clic pour recréer instantanément une nouvelle session modifiable par toute la famille.' 
+                                : 'Consulte ici toutes les anciennes listes de courses de la famille.'}
+                        </p>
+                    </div>
+
+                    ${archivesHTML}
+                </main>
+
+                ${renderReuseArchiveModal()}
+            `;
+        }
+
+        // 6. ÉCRAN DÉTAIL D'UNE LISTE ARCHIVÉE
+        function renderArchiveDetail() {
+            const arch = state.archivedLists.find(a => a.id === state.activeArchiveId);
+            if (!arch) {
+                openArchives();
+                return '';
+            }
+
+            const creator = USERS[arch.createdBy] || USERS.olivier;
+            const currentUserObj = USERS[state.currentUser];
+            const admin = isAdmin();
+
+            const itemsHTML = (arch.items || []).map(item => {
+                const author = USERS[item.addedBy] || USERS.olivier;
+                const hasComments = item.comments && item.comments.length > 0;
+
+                const bubblesHTML = (item.comments || []).map(c => {
+                    const cAuthor = USERS[c.author] || USERS.olivier;
+                    return `
+                        <div class="flex flex-col items-start mb-1.5 last:mb-0">
+                            <span class="text-[10.5px] font-bold mb-0.5 px-1" style="color: ${cAuthor.color}">
+                                ${cAuthor.name} • ${c.time}
+                            </span>
+                            <div class="sms-bubble sms-bubble-other text-white text-[13px]"
+                                 style="background-color: ${cAuthor.color};">
+                                ${escapeHTML(c.text)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="bg-white rounded-[22px] shadow-2xs border border-slate-200/70 overflow-hidden"
+                         style="border-left: 5px solid ${author.color};">
+                        <div class="p-3.5 flex items-start justify-between gap-2">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-2">
+                                    <h4 class="text-[15.5px] font-bold text-slate-900">${escapeHTML(item.name)}</h4>
+                                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                                          style="background-color: ${author.bgLight}; color: ${author.textDark};">
+                                        ${author.name}
+                                    </span>
+                                </div>
+                                ${item.description ? `
+                                    <p class="text-[13px] text-slate-500 mt-0.5">${escapeHTML(item.description)}</p>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        ${hasComments ? `
+                            <div class="bg-[#F8F8FA] border-t border-slate-100 px-3.5 py-2.5">
+                                ${bubblesHTML}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <header class="glass-header sticky top-0 z-30 px-4 py-3 border-b border-slate-200/70 shrink-0">
+                    <div class="flex items-center justify-between">
+                        <button onclick="openArchives()" class="flex items-center gap-1 text-blue-600 font-semibold text-[15px] py-1 pr-2 active:opacity-60">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            Archives
+                        </button>
+                        <div class="flex items-center gap-2">
+                            ${admin ? `
+                                <button onclick="deleteArchivePermanently('${arch.id}', event)" title="Supprimer définitivement"
+                                    class="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center active:bg-red-100 transition">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            ` : ''}
+                            ${renderTopProfileBadge()}
+                        </div>
+                    </div>
+
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h1 class="text-[21px] font-extrabold text-slate-900 leading-tight">${escapeHTML(arch.store)}</h1>
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">Archive</span>
+                            </div>
+                            <p class="text-[12px] text-slate-500 mt-0.5">
+                                Archivée le <strong>${escapeHTML(arch.archivedAt || arch.createdAt)}</strong> (créée par ${creator.name})
+                            </p>
+                        </div>
+                    </div>
+                </header>
+
+                <main class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-28">
+                    ${arch.note ? `
+                        <div class="bg-white rounded-2xl p-3 border border-slate-200/70 text-[13px] text-slate-600">
+                            📝 ${escapeHTML(arch.note)}
+                        </div>
+                    ` : ''}
+                    ${itemsHTML}
+                </main>
+
+                ${admin ? `
+                    <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#F2F2F7] via-[#F2F2F7]/95 to-transparent pt-6">
+                        <button onclick="openReuseArchiveModal('${arch.id}', event)"
+                            class="w-full py-3.5 px-5 rounded-2xl text-white font-bold text-[16px] shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition"
+                            style="background-color: ${currentUserObj.color}; box-shadow: 0 10px 25px -5px ${currentUserObj.color}80;">
+                            <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                            Réutiliser cette liste (${(arch.items || []).length} produits)
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${renderReuseArchiveModal()}
+            `;
+        }
+
+        // MODALE DE CONFIGURATION POUR RÉUTILISER UNE ARCHIVE
+        function renderReuseArchiveModal() {
+            if (!state.reuseModalArchiveId) return '';
+            const archive = state.archivedLists.find(a => a.id === state.reuseModalArchiveId);
+            if (!archive) return '';
+
+            const currentUserObj = USERS[state.currentUser];
+            const isKnownStore = STORES.some(s => s.name === archive.store && s.name !== 'Autre');
+            const initialStoreValue = isKnownStore ? archive.store : 'Autre';
+
+            const storeOptions = STORES.map(s => `
+                <option value="${s.name}" ${s.name === initialStoreValue ? 'selected' : ''}>
+                    ${s.icon} ${s.name}
+                </option>
+            `).join('');
+
+            return `
+                <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/45 backdrop-blur-xs animate-fade-in">
+                    <form onsubmit="handleConfirmReuseArchive(event)"
+                        class="bg-white w-full max-w-[430px] rounded-t-[32px] sm:rounded-[32px] p-5 shadow-2xl space-y-4 animate-slide-up">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Reprendre une archive</span>
+                                <h3 class="text-[19px] font-extrabold text-slate-900">Nouvelle liste depuis l'archive</h3>
+                            </div>
+                            <button type="button" onclick="closeReuseArchiveModal()"
+                                class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                        <p class="text-[13px] text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                            Les <strong>${(archive.items || []).length} produits</strong> de cette liste seront recopiés et décochés. Toute la famille pourra ensuite en ajouter ou en retirer.
+                        </p>
+
+                        <div>
+                            <label class="block text-[12.5px] font-bold text-slate-700 mb-1.5">Magasin pour ces nouvelles courses</label>
+                            <select id="reuse-store-select"
+                                onchange="document.getElementById('reuse-custom-store-box').classList.toggle('hidden', this.value !== 'Autre');"
+                                class="w-full px-3.5 py-3 rounded-2xl bg-slate-100 border border-slate-200/80 text-[15px] font-semibold focus:outline-none">
+                                ${storeOptions}
+                            </select>
+                        </div>
+
+                        <div id="reuse-custom-store-box" class="${initialStoreValue === 'Autre' ? '' : 'hidden'}">
+                            <label class="block text-[12.5px] font-bold text-slate-700 mb-1">Nom du magasin</label>
+                            <input type="text" id="reuse-custom-store" value="${!isKnownStore ? escapeHTML(archive.store) : ''}"
+                                placeholder="Ex: Picard, Lidl..."
+                                class="w-full px-3.5 py-3 rounded-2xl bg-slate-100 border border-slate-200/80 text-[15px] focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-[12.5px] font-bold text-slate-700 mb-1">Note ou créneau (optionnel)</label>
+                            <input type="text" id="reuse-note-input" placeholder="Ex: Courses de la semaine..."
+                                class="w-full px-3.5 py-3 rounded-2xl bg-slate-100 border border-slate-200/80 text-[14px] focus:outline-none">
+                        </div>
+
+                        <label class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/60 cursor-pointer">
+                            <input type="checkbox" id="reuse-keep-comments" class="w-4 h-4 rounded accent-slate-900">
+                            <span class="text-[13px] text-slate-700 font-medium">
+                                Conserver les anciens commentaires SMS (sinon repartir à zéro)
+                            </span>
+                        </label>
+
+                        <div class="flex gap-2.5 pt-1">
+                            <button type="button" onclick="closeReuseArchiveModal()"
+                                class="flex-1 py-3.5 rounded-2xl bg-slate-100 text-slate-700 font-bold text-[15px]">
+                                Annuler
+                            </button>
+                            <button type="submit"
+                                class="flex-[1.5] py-3.5 rounded-2xl text-white font-bold text-[15px] shadow-md"
+                                style="background-color: ${currentUserObj.color};">
+                                Recréer la liste
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // RENDU PRINCIPAL
+        // ==========================================
+        function render() {
+            const root = document.getElementById('app-root');
+            if (!state.currentUser || state.view === 'profiles') {
+                root.innerHTML = renderProfileScreen();
+            } else if (state.view === 'dashboard') {
+                root.innerHTML = renderDashboard();
+            } else if (state.view === 'create-list') {
+                root.innerHTML = renderCreateList();
+            } else if (state.view === 'list-detail') {
+                root.innerHTML = renderListDetail();
+            } else if (state.view === 'archives') {
+                root.innerHTML = renderArchives();
+            } else if (state.view === 'archive-detail') {
+                root.innerHTML = renderArchiveDetail();
+            }
+            lucide.createIcons();
+        }
+
+        // Lancement au chargement
+        window.addEventListener('DOMContentLoaded', () => {
+            render();
+            initCloudSync();
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./service-worker.js').catch((error) => {
+                    console.info('Service Worker non disponible :', error);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

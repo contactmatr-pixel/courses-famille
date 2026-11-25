@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Courses Famille">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#007AFF"/>
+      <stop offset="1" stop-color="#34C759"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M128 151h42l34 185h191l39-132H191" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="235" cy="385" r="24" fill="#fff"/>
+  <circle cx="370" cy="385" r="24" fill="#fff"/>
+  <path d="M241 259h106M294 206v106" stroke="#fff" stroke-width="24" stroke-linecap="round"/>
+</svg>
